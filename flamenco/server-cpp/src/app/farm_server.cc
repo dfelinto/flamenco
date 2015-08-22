@@ -20,6 +20,8 @@
 
 #include <cstdlib>
 #include <csignal>
+#include <getopt.h>
+#include <string>
 
 #include "http/http_server_soup.h"
 #include "model/model_farm.h"
@@ -53,16 +55,52 @@ void signal_quit(int sig) {
 }  /* namespace */
 
 int main(int argc, char **argv) {
+  int loglevel = 0;
+  string dbpath = "/tmp/farm.sqlite";
+  string server_storage_path = "/tmp";
+  int c;
+  int digit_optind = 0;
+
+  while (1) {
+    int this_option_optind = optind ? optind : 1;
+    int option_index = 0;
+    static struct option long_options[] = {
+      {"debug",    no_argument,       0, 'd'},
+      {"loglevel", required_argument, 0, 'v'},
+      {"dbpath",   required_argument, 0, 'b'},
+      {"stpath",   required_argument, 0, 's'},
+      {0,          0,                 0,  0 }
+    };
+
+    c = getopt_long(argc, argv, "v:",
+                    long_options, &option_index);
+    if (c == -1)
+      break;
+
+    switch (c) {
+      case 'b':
+        dbpath = optarg;
+        break;
+      case 'v':
+        loglevel = atoi(optarg);
+        break;
+      case 's':
+        server_storage_path = optarg;
+        break;
+      default:
+        printf("Unknown argument with character code 0%o ??\n", c);
+    }
+  }
+
   signal(SIGINT, signal_quit);
 
   util_logging_init(argv[0]);
-  /* TODO(sergey): Make it a ocmmand line argument. */
   util_logging_start();
-  util_logging_verbosity_set(1);
+  util_logging_verbosity_set(loglevel);
 
 #ifndef DRY_RUN_STORAGE
   // SQLiteStorage *sqlite_storage = new SQLiteStorage(":memory:");
-  SQLiteStorage *sqlite_storage = new SQLiteStorage("/tmp/farm.sqlite");
+  SQLiteStorage *sqlite_storage = new SQLiteStorage(dbpath);
   sqlite_storage->connect();
   sqlite_storage->create_schema();
 
@@ -87,9 +125,9 @@ int main(int argc, char **argv) {
 #endif
   VLOG(1) << "Restored in " << util_time_dt() - start_time << " seconds.";
 
-  http_server = new  SOUPHTTPServer(farm,
-                                    9999,
-                                    "/home/sergey/src/farm-proto/web");
+  http_server = new SOUPHTTPServer(farm,
+                                   9999,
+                                   server_storage_path);
   http_server->idle_function_cb = function_bind(&Farm::idle_handler, farm);
   http_server->start_serve();
 
