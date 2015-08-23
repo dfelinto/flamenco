@@ -22,6 +22,8 @@
 #include <csignal>
 #include <getopt.h>
 #include <string>
+#include <fstream>
+#include <iostream>
 
 #include "http/http_server_soup.h"
 #include "model/model_farm.h"
@@ -58,6 +60,10 @@ int main(int argc, char **argv) {
   int log_level = 0;
   string database_path = "/tmp/farm.sqlite";
   string server_storage_path = "/tmp";
+  string config_path = "server.config";
+  bool dry_run_storage = false;
+  int port = 9999;
+  std::map<std::string,std::string> server_config;
   int c;
 
   while (1) {
@@ -67,10 +73,11 @@ int main(int argc, char **argv) {
       {"loglevel", required_argument, 0, 'v'},
       {"dbpath",   required_argument, 0, 'b'},
       {"stpath",   required_argument, 0, 's'},
+      {"port",     required_argument, 0, 'p'},
       {0,          0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "v:", long_options, &option_index);
+    c = getopt_long(argc, argv, "dv:bsp:", long_options, &option_index);
     if (c == -1) {
       break;
     }
@@ -85,9 +92,30 @@ int main(int argc, char **argv) {
       case 's':
         server_storage_path = optarg;
         break;
+      case 'p':
+        port = atoi(optarg);
+        break;
       default:
         printf("Unknown argument with character code 0%o ??\n", c);
     }
+  }
+
+  std::ifstream ifs(config_path);
+  std::string line;
+  if (ifs.good()) {
+    while( std::getline(ifs, line) )
+    {
+      std::istringstream is_line(line);
+      std::string key;
+      if( std::getline(is_line, key, '=') )
+      {
+        std::string value;
+        if( std::getline(is_line, value) )
+          //store_line(key, value);
+          server_config[key] = value;
+      }
+    }
+    ifs.close();
   }
 
   signal(SIGINT, signal_quit);
@@ -96,20 +124,30 @@ int main(int argc, char **argv) {
   util_logging_start();
   util_logging_verbosity_set(log_level);
 
-#ifndef DRY_RUN_STORAGE
-  // SQLiteStorage *sqlite_storage = new SQLiteStorage(":memory:");
-  SQLiteStorage *sqlite_storage = new SQLiteStorage(database_path);
-  sqlite_storage->connect();
-  sqlite_storage->create_schema();
+  VLOG(1) << "Loading configuration:";
+  try {
+    string dry_run_storage_value = server_config.at("dry_run_storage");
+    VLOG(1) << "  dry_run_storage=" << dry_run_storage_value << " (config)";
+    std::istringstream is(dry_run_storage_value);
+    is >> std::boolalpha >> dry_run_storage;
+  } catch (const std::out_of_range& oor) {
+    VLOG(1) << "  dry_run_storage=false (default)";
+  }
 
-  sqlite_storage->use_bulked_transactions = true;
-  sqlite_storage->transaction_commit_interval = 2.0;
+  if (dry_run_storage) {
+    storage = new DryRunStorage(true);
+    storage->connect();
+  } else {
+    // SQLiteStorage *sqlite_storage = new SQLiteStorage(":memory:");
+    SQLiteStorage *sqlite_storage = new SQLiteStorage(database_path);
+    sqlite_storage->connect();
+    sqlite_storage->create_schema();
 
-  storage = sqlite_storage;
-#else
-  storage = new DryRunStorage(true);
-  storage->connect();
-#endif
+    sqlite_storage->use_bulked_transactions = true;
+    sqlite_storage->transaction_commit_interval = 2.0;
+
+    storage = sqlite_storage;
+  }
 
   double start_time = util_time_dt();
   farm = new Farm(storage);
@@ -124,7 +162,7 @@ int main(int argc, char **argv) {
   VLOG(1) << "Restored in " << util_time_dt() - start_time << " seconds.";
 
   http_server = new SOUPHTTPServer(farm,
-                                   9999,
+                                   port,
                                    server_storage_path);
   http_server->idle_function_cb = function_bind(&Farm::idle_handler, farm);
   http_server->start_serve();
