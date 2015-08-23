@@ -55,14 +55,12 @@ void signal_quit(int sig) {
 }  /* namespace */
 
 int main(int argc, char **argv) {
-  int loglevel = 0;
-  string dbpath = "/tmp/farm.sqlite";
+  int log_level = 0;
+  string database_path = "/tmp/farm.sqlite";
   string server_storage_path = "/tmp";
   int c;
-  int digit_optind = 0;
 
   while (1) {
-    int this_option_optind = optind ? optind : 1;
     int option_index = 0;
     static struct option long_options[] = {
       {"debug",    no_argument,       0, 'd'},
@@ -72,17 +70,17 @@ int main(int argc, char **argv) {
       {0,          0,                 0,  0 }
     };
 
-    c = getopt_long(argc, argv, "v:",
-                    long_options, &option_index);
-    if (c == -1)
+    c = getopt_long(argc, argv, "v:", long_options, &option_index);
+    if (c == -1) {
       break;
+    }
 
     switch (c) {
       case 'b':
-        dbpath = optarg;
+        database_path = optarg;
         break;
       case 'v':
-        loglevel = atoi(optarg);
+        log_level = atoi(optarg);
         break;
       case 's':
         server_storage_path = optarg;
@@ -96,11 +94,11 @@ int main(int argc, char **argv) {
 
   util_logging_init(argv[0]);
   util_logging_start();
-  util_logging_verbosity_set(loglevel);
+  util_logging_verbosity_set(log_level);
 
 #ifndef DRY_RUN_STORAGE
   // SQLiteStorage *sqlite_storage = new SQLiteStorage(":memory:");
-  SQLiteStorage *sqlite_storage = new SQLiteStorage(dbpath);
+  SQLiteStorage *sqlite_storage = new SQLiteStorage(database_path);
   sqlite_storage->connect();
   sqlite_storage->create_schema();
 
