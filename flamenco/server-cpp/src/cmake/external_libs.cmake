@@ -8,6 +8,8 @@ INCLUDE(FindPkgConfig)
 
 pkg_check_modules(GLIB2 glib-2.0)
 pkg_check_modules(LIBSOUP libsoup-2.4)
+link_directories(${GLIB2_LIBRARY_DIRS})
+link_directories(${LIBSOUP_LIBRARY_DIRS})
 
 ###########################################################################
 # GFlags/GLog

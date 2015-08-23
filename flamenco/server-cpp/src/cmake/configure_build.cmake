@@ -14,8 +14,7 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 if(APPLE)
 	if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-		# 10.6 is our min. target, if you use higher sdk, weak linking happens.
-		set(CMAKE_OSX_DEPLOYMENT_TARGET "10.6" CACHE STRING "" FORCE)
+		# TODO(sergey): Set OSX deployment target to appropriate value.
 	endif()
 
 	if(NOT ${CMAKE_GENERATOR} MATCHES "Xcode")
