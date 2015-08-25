@@ -21,7 +21,6 @@
 #include <cstdlib>
 #include <csignal>
 #include <getopt.h>
-#include <string>
 #include <fstream>
 #include <iostream>
 
@@ -29,6 +28,7 @@
 #include "model/model_farm.h"
 #include "storage/storage_dryrun.h"
 #include "storage/storage_database_sqlite.h"
+#include "util/util_config.h"
 #include "util/util_function.h"
 #include "util/util_string.h"
 #include "util/util_logging.h"
@@ -61,11 +61,9 @@ int main(int argc, char **argv) {
   string database_path = "/tmp/farm.sqlite";
   string server_storage_path = "/tmp";
   string config_path = "server.config";
-  bool dry_run_storage = false;
   int port = 9999;
-  std::map<std::string,std::string> server_config;
-  int c;
 
+  int c;
   while (1) {
     int option_index = 0;
     static struct option long_options[] = {
@@ -100,41 +98,19 @@ int main(int argc, char **argv) {
     }
   }
 
-  std::ifstream ifs(config_path);
-  std::string line;
-  if (ifs.good()) {
-    while( std::getline(ifs, line) )
-    {
-      std::istringstream is_line(line);
-      std::string key;
-      if( std::getline(is_line, key, '=') )
-      {
-        std::string value;
-        if( std::getline(is_line, value) )
-          //store_line(key, value);
-          server_config[key] = value;
-      }
-    }
-    ifs.close();
-  }
-
   signal(SIGINT, signal_quit);
 
+  /* Startup logging utilities */
   util_logging_init(argv[0]);
   util_logging_start();
   util_logging_verbosity_set(log_level);
 
-  VLOG(1) << "Loading configuration:";
-  try {
-    string dry_run_storage_value = server_config.at("dry_run_storage");
-    VLOG(1) << "  dry_run_storage=" << dry_run_storage_value << " (config)";
-    std::istringstream is(dry_run_storage_value);
-    is >> std::boolalpha >> dry_run_storage;
-  } catch (const std::out_of_range& oor) {
-    VLOG(1) << "  dry_run_storage=false (default)";
-  }
 
-  if (dry_run_storage) {
+  /* This is how we'll be creating config thing */
+  config server_config(config_path);
+  string dry_run_storage_value = server_config.get_value("dry_run_storage",
+                                                             "false");
+  if (dry_run_storage_value == "true") {
     storage = new DryRunStorage(true);
     storage->connect();
   } else {

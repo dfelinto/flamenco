@@ -6,6 +6,7 @@ set(INC_SYS
 )
 
 set(SRC
+	util_config.cc
 	util_json.cc
 	util_logging.cc
 	util_path.cc
@@ -16,6 +17,7 @@ set(SRC
 
 set(SRC_HEADERS
 	util_algorithm.h
+	util_config.h
 	util_foreach.h
 	util_json.h
 	util_logging.h
