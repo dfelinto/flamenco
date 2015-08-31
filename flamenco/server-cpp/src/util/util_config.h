@@ -56,4 +56,4 @@ class config {
 
 }  /* namespace Farm */
 
-#endif /* UTIL_CONFIG_H_ */
+#endif  /* UTIL_CONFIG_H_ */

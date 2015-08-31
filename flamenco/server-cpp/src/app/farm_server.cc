@@ -22,7 +22,6 @@
 #include <csignal>
 #include <getopt.h>
 #include <fstream>
-#include <iostream>
 
 #include "http/http_server_soup.h"
 #include "model/model_farm.h"

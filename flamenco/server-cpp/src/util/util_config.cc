@@ -18,13 +18,13 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+#include "util/util_config.h"
 
 #include <fstream>
 #include <sstream>
 #include <iostream>
 
 #include "util/util_string.h"
-#include "util/util_config.h"
 
 namespace Farm {
 
@@ -56,16 +56,17 @@ config::value_type config::set_value(const string& key,
 }
 
 bool config::parse_file(const string& file_name) {
+  using std::getline;
   std::ifstream ifs(file_name);
   string line;
   if (ifs.good()) {
-    while (std::getline(ifs, line)) {
+    while (getline(ifs, line)) {
       std::istringstream is_line(line);
       string key;
       /* getline will consume the string until the delimiter (defaults to \n). */
-      if (std::getline(is_line, key, '=')) {
+      if (getline(is_line, key, '=')) {
         string value;
-        if (std::getline(is_line, value))
+        if (getline(is_line, value))
           values_[key] = value;
       }
     }
