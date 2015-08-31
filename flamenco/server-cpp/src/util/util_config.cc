@@ -49,6 +49,12 @@ config::value_type config::get_value(const string& key,
   }
 }
 
+config::value_type config::set_value(const string& key,
+                                     value_type value) {
+  values_[key] = value;
+  return value;
+}
+
 bool config::parse_file(const string& file_name) {
   std::ifstream ifs(file_name);
   string line;
@@ -56,9 +62,10 @@ bool config::parse_file(const string& file_name) {
     while (std::getline(ifs, line)) {
       std::istringstream is_line(line);
       string key;
+      /* getline will consume the string until the delimiter (defaults to \n). */
       if (std::getline(is_line, key, '=')) {
         string value;
-        if( std::getline(is_line, value) )
+        if (std::getline(is_line, value))
           values_[key] = value;
       }
     }

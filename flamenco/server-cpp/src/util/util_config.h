@@ -44,6 +44,10 @@ class config {
    */
   value_type get_value(const string& key, value_type default_value = "");
 
+  /* Set value for a speficied key. If the key already exists, we update the
+   existing value. If it does not exist, we append the pair to the map. */
+  value_type set_value(const string& key, value_type value);
+
  protected:
   bool parse_file(const string& file_name);
 

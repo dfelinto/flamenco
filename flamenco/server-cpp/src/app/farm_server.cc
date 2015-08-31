@@ -57,10 +57,15 @@ void signal_quit(int sig) {
 }  /* namespace */
 
 int main(int argc, char **argv) {
+  /* Set default configuration values for the application. These values can be
+   overridden using a config file (by default server.config, next to the
+   binary). Alternatively, values can be passed as command line arguments. In
+   this case, they will override any default value, as well as config file. */
   int log_level = 0;
-  string database_path = "/tmp/farm.sqlite";
-  string server_storage_path = "/tmp";
-  string config_path = "server.config";
+  string config_database_path_value = "/tmp/farm.sqlite";
+  string config_storage_path_value = "/tmp";
+  string dry_run_storage_value = "false";
+  string config_config_path_value = "server.config";
   int port = 9999;
 
   int c;
@@ -69,6 +74,7 @@ int main(int argc, char **argv) {
     static struct option long_options[] = {
       {"debug",    no_argument,       0, 'd'},
       {"loglevel", required_argument, 0, 'v'},
+      {"config",   required_argument, 0, 'c'},
       {"dbpath",   required_argument, 0, 'b'},
       {"stpath",   required_argument, 0, 's'},
       {"port",     required_argument, 0, 'p'},
@@ -82,13 +88,16 @@ int main(int argc, char **argv) {
 
     switch (c) {
       case 'b':
-        database_path = optarg;
+        config_database_path_value = optarg;
         break;
       case 'v':
         log_level = atoi(optarg);
         break;
+      case 'c':
+        config_config_path_value = optarg;
+        break;
       case 's':
-        server_storage_path = optarg;
+        config_storage_path_value = optarg;
         break;
       case 'p':
         port = atoi(optarg);
@@ -98,24 +107,29 @@ int main(int argc, char **argv) {
     }
   }
 
+  /* Here we load and parse the configuration file, obtaining a map. */
+  config server_config(config_config_path_value);
+
+  string config_dry_run_storage = server_config.get_value("dry_run_storage",
+                                                          dry_run_storage_value);
+  string config_database_path = server_config.get_value("database_path",
+                                                        config_database_path_value);
+  string config_storage_path = server_config.get_value("storage_path",
+                                                       config_storage_path_value);
+
   signal(SIGINT, signal_quit);
 
-  /* Startup logging utilities */
+  /* Startup logging utilities. */
   util_logging_init(argv[0]);
   util_logging_start();
   util_logging_verbosity_set(log_level);
 
-
-  /* This is how we'll be creating config thing */
-  config server_config(config_path);
-  string dry_run_storage_value = server_config.get_value("dry_run_storage",
-                                                             "false");
-  if (dry_run_storage_value == "true") {
+  if (config_dry_run_storage == "true") {
     storage = new DryRunStorage(true);
     storage->connect();
   } else {
     // SQLiteStorage *sqlite_storage = new SQLiteStorage(":memory:");
-    SQLiteStorage *sqlite_storage = new SQLiteStorage(database_path);
+    SQLiteStorage *sqlite_storage = new SQLiteStorage(config_database_path);
     sqlite_storage->connect();
     sqlite_storage->create_schema();
 
@@ -139,7 +153,7 @@ int main(int argc, char **argv) {
 
   http_server = new SOUPHTTPServer(farm,
                                    port,
-                                   server_storage_path);
+                                   config_storage_path);
   http_server->idle_function_cb = function_bind(&Farm::idle_handler, farm);
   http_server->start_serve();
 
