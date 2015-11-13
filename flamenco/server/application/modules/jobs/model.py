@@ -10,16 +10,17 @@ class Job(db.Model):
     The creation of a job can happen in different ways:
     * within Flamenco (using the job creation form)
     * via a query from an external software (e.g. Attract)
-    * withing Blender itself
+    * within Blender itself, via an addon
 
     Possible statuses for a job are:
-    * Waiting (tasks for this job are ready to be dispatched)
-    * Active
-    * Canceled
-    * Failed
-    * Paused (will be added later)
-    * Completed
-    * Waiting
+    * 0 Waiting (tasks for this job are ready to be dispatched)
+    * 1 Active
+    * 2 Canceled
+    * 3 Failed
+    * 4 Completed
+
+    In the database (and some other place) we use int types to reference
+    statuses, for indexing and query speed.
     """
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
@@ -36,6 +37,19 @@ class Job(db.Model):
     notes = db.Column(db.Text())
     user_id = db.Column(db.Integer(), db.ForeignKey('user.id'))
     user = db.relationship('User', backref=db.backref('job', lazy='dynamic'))
+
+    # Convenience list that maps status name with the IDs stored in the db
+    statuses_list = ['waiting', 'active', 'canceled', 'failed', 'completed']
+
+    @property
+    def status_name(self):
+        """Human representation of a status name"""
+        return statuses_list[self.status]
+
+    @status_name.setter
+    def status_name(self, value):
+        value = statuses_list.index(value)
+        self.status = value
 
     def __repr__(self):
         return '<Job %r>' % self.name
