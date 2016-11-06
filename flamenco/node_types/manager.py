@@ -1,4 +1,4 @@
-node_type_mananger = {
+node_type_manager = {
     'name': {
         'type': 'string',
         'required': True,
