@@ -54,32 +54,39 @@ def setup_db():
     # Render Config
     render_config = JobType.query.filter_by(name='blender_simple_render').first()
     if not render_config:
-        configuration = {'blender_render': {
-            'Linux': '',
-            'Darwin': '',
-            'Windows': ''
-        }}
-        print("Please enter the shared blender path for the simple_blender_render "
-              "command")
-        configuration['blender_render']['Linux'] = raw_input('Linux path: ')
-        configuration['blender_render']['Darwin'] = raw_input('OSX path: ')
-        configuration['blender_render']['Windows'] = raw_input('Windows path: ')
-
+        log.debug('Creating blender_simple_render.')
+        configuration = {
+                'blender_render': get_blender_render(),
+                }
         render_config = JobType(
             name='blender_simple_render',
             properties=json.dumps(configuration))
         db.session.add(render_config)
         db.session.commit()
 
+    # Render resume config
+    render_resume = JobType.query.filter_by(name='blender_resume_render').first()
+    if not render_resume:
+        log.debug('Creating blender_resume_render job_type.')
+        configuration = {
+                'blender_render': get_blender_render(),
+                'imagemagick_convert': get_imagemagick_convert(),
+                'move_file': get_move_file(),
+                'delete_file': get_delete_file(),
+                }
+        render_resume_config = JobType(
+                name='blender_resume_render',
+                properties=json.dumps(configuration))
+        db.session.add(render_resume_config)
+        db.session.commit()
+
     # The sleep simple command, used for testing and with OS defaults already set.
     sleep_simple = JobType.query.filter_by(name='sleep_simple').first()
     if not sleep_simple:
         log.debug('Creating sleep_simple job_type.')
-        configuration = {'sleep': {
-            'Linux': 'sleep',
-            'Darwin': 'sleep',
-            'Windows': 'timeout'
-        }}
+        configuration = {
+                'sleep': get_sleep(),
+                }
         sleep_config = JobType(
             name='sleep_simple',
             properties=json.dumps(configuration))
@@ -112,6 +119,68 @@ def runserver():
         debug=app.config['DEBUG'],
         host=app.config['HOST'],
         threaded=True)
+
+
+configuration_cache = {}
+
+def job_type(settings_name):
+    if settings_name not in configuration_cache:
+        configuration = {
+            'Linux': '',
+            'Darwin': '',
+            'Windows': ''
+        }
+
+        print("Please enter the shared path for the {0} "
+              "command".format(settings_name))
+
+        configuration['Linux'] = raw_input('Linux path: ')
+        configuration['Darwin'] = raw_input('OSX path: ')
+        configuration['Windows'] = raw_input('Windows path: ')
+
+        configuration_cache[settings_name] = configuration
+
+    return job_config
+
+
+def get_blender_render():
+    """Render setup for Blender related tasks"""
+    return job_type('blender_render')
+
+
+def get_imagemagick_convert():
+    """Render setup for imagemagick related tasks"""
+    return job_type('imagemagick_convert')
+
+
+def get_sleep():
+    """"""
+    configuration = {
+            'Linux': 'sleep',
+            'Darwin': 'sleep',
+            'Windows': 'timeout'
+        }
+    return configuration
+
+
+def get_move_file():
+    """"""
+    configuration = {
+            'Linux': 'mv',
+            'Darwin': 'mv',
+            'Windows': 'rename'
+        }
+    return configuration
+
+
+def get_delete_file():
+    """"""
+    configuration = {
+            'Linux': 'rm',
+            'Darwin': 'rm',
+            'Windows': 'del'
+        }
+    return configuration
 
 
 if __name__ == "__main__":

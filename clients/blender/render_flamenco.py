@@ -20,7 +20,7 @@ bl_info = {
     "name": "Flamenco Integration",
     "author": "Eibriel, Francesco Siddi",
     "version": (0, 5),
-    "blender": (2, 73, 0),
+    "blender": (2, 78, 0),
     "location": "View3D > Tool Shelf > Flamenco",
     "description": "BAM pack current file and send it to the Flamenco Renderfarm",
     "wiki_url": "",
@@ -457,9 +457,10 @@ class MovPanelControl(bpy.types.Panel):
 
 jobType_list = [
     ('blender_simple_render', 'Simple', '', 1),
-    ('tiled_blender_render', 'Tiled', '', 2),
-    ('blender_bake_anim_cache', 'Bake Anim Cache', '', 3),
-    ('blender_opengl_render', 'OpenGL Render', '', 4),
+    ('blender_resume_render', 'Resume', '', 2),
+    ('tiled_blender_render', 'Tiled', '', 3),
+    ('blender_bake_anim_cache', 'Bake Anim Cache', '', 4),
+    ('blender_opengl_render', 'OpenGL Render', '', 5),
     ]
 
 command_names = [
