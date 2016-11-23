@@ -140,7 +140,7 @@ def job_type(settings_name):
 
         configuration_cache[settings_name] = configuration
 
-    return job_config
+    return configuration_cache[settings_name]
 
 
 def get_blender_render():

@@ -36,9 +36,6 @@ class TaskCompiler:
             # Do path remapping
             render_output = render_output.format(**paths)
 
-            except KeyError:
-                render_output = None
-
             cmd = [
                 blender_cmd,
                 '--enable-autoexec',
@@ -64,9 +61,9 @@ class TaskCompiler:
             cmd += [
                 '--',
                 '--cycles-resumable-num-chunks',
-                cmd_settings['num_cycles_chunks'],
+                str(cmd_settings['cycles_num_chunks']),
                 '--cycles-resumable-current-chunk',
-                cmd_settings['cycles_chunk'],
+                str(cmd_settings['cycles_chunk']),
                 ]
 
             return cmd
@@ -90,9 +87,9 @@ class TaskCompiler:
 
             # Do path remapping
             convert_cmd = convert_cmd.format(**paths)
-            input_image_render_cmd = input_image_render_cmd.format(**paths)
-            input_image_merge_cmd = input_image_merge_cmd.format(**paths)
-            output_image_merge_cmd = output_image_merge_cmd.format(**paths)
+            input_image_render = input_image_render.format(**paths)
+            input_image_merge = input_image_merge.format(**paths)
+            output_image_merge = output_image_merge.format(**paths)
 
             # calculate the contributions of the individual images
             cycles_chunk = cmd_settings['cycles_chunk']
@@ -122,7 +119,7 @@ class TaskCompiler:
             """
             # Parse the file patha. These property are required, so we crash if not set.
             input_file = cmd_settings['input_file']
-            output_file = cmd_settoutgs['output_file']
+            output_file = cmd_settings['output_file']
             # Do path remapping
             input_file = input_file.format(**paths)
             output_file = output_file.format(**paths)
@@ -155,7 +152,7 @@ class TaskCompiler:
             'blender_render': _compile_blender_render,
             'imagemagick_convert': _compile_image_merge,
             'move_file': _compile_move_file,
-            'delete_file': _compile_move_file,
+            'delete_file': _compile_delete_file,
         }
 
         commands = []
@@ -168,3 +165,4 @@ class TaskCompiler:
             commands.append(cmd_dict)
 
         return commands
+
