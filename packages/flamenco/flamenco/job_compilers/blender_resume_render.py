@@ -107,8 +107,16 @@ def compile_blender_resume_render(job, create_task):
 
 
 def filepath_from_frame(render_output, frame, file_format):
+    import os
     # TODO do it for real, with smart path handling or call blender and get it from it
-    return "{0}/{1}.{2}".format(render_output, frame, file_format)
+    formats = {
+            'JPEG': 'jpg',
+            'PNG': 'png',
+            }
+
+    extension = formats.get(file_format, "jpg")
+    # TODO - assert if extension doesn't match?
+    return os.path.join(render_output, "{0:04d}.{1}".format(frame, extension))
 
 
 def render_output_from_filepath(filepath):
