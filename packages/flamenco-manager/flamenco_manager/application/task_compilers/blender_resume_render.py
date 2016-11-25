@@ -124,8 +124,17 @@ class TaskCompiler:
             input_file = input_file.format(**paths)
             output_file = output_file.format(**paths)
 
+            # Check if a command has been defined, or use the default definition.
+            try:
+                move_cmd = cmd_settings['move_cmd']
+            except KeyError:
+                move_cmd = '{move_file}'
+
+            # Do path remapping
+            move_cmd = move_cmd.format(**paths)
+
             cmd = [
-                '{move_file}',
+                move_cmd,
                 input_file,
                 output_file,
                 ]
@@ -141,8 +150,17 @@ class TaskCompiler:
             # Do path remapping
             filepath = filepath.format(**paths)
 
+            # Check if a command has been defined, or use the default definition.
+            try:
+                delete_cmd = cmd_settings['delete_cmd']
+            except KeyError:
+                delete_cmd = '{delete_file}'
+
+            # Do path remapping
+            delete_cmd = delete_cmd.format(**paths)
+
             cmd = [
-                '{delete_file}',
+                delete_cmd,
                 filepath,
                 ]
 
