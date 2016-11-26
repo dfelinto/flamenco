@@ -474,9 +474,13 @@ def cmd_exec(command, task):
         if (platform.system() is not 'Windows') \
         else _interactiveReadProcessWin(PROCESS, command, task)
 
-    log = LOG
     activity = ACTIVITY
     time_init = TIME_INIT
+
+    if LOG:
+        log = LOG[-256:]
+    else:
+        log = ""
 
 
     script_dir = os.path.dirname(__file__)
@@ -506,7 +510,7 @@ def cmd_exec(command, task):
 
     params = {
         'status': status,
-        'log': log[-256:],
+        'log': log,
         'activity': activity,
         'time_cost': time_cost,
         'job_id': task['job_id'],
