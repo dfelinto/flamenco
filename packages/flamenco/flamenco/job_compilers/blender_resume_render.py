@@ -31,8 +31,9 @@ def compile_blender_resume_render(job, create_task):
                     'cycles_chunk': cycles_chunk,
                 }
             }
-            if render_output:
-                cmd_render['settings']['render_output'] = render_output
+
+            # we force the render_output to be specified at all times
+            cmd_render['settings']['render_output'] = render_output
 
             commands.append(cmd_render)
 

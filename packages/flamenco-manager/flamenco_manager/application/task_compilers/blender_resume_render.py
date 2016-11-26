@@ -41,15 +41,9 @@ class TaskCompiler:
                 '--enable-autoexec',
                 '-noaudio',
                 '--background',
-                filepath]
-
-            if render_output:
-                cmd += [
-                    '--render-output',
-                    render_output
-                ]
-
-            cmd += [
+                filepath,
+                '--render-output',
+                render_output,
                 '--render-format',
                 cmd_settings['format']
             ]
