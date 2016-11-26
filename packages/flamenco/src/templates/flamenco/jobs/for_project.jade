@@ -1,0 +1,117 @@
+| {% extends 'flamenco/layout.html' %}
+| {% block bodyattrs %}{{ super() }} data-context='job'{% endblock %}
+| {% block page_title %}Jobs - {{ project.name }}{% endblock %}
+| {% block body %}
+#col_main
+	.col_header.task-list-header
+		span(title='In the edit') {{ stats.nr_of_jobs }} jobs | {{ stats.total_frame_count }} frames
+		a.task-project(href="{{url_for('projects.view', project_url=project.url)}}") {{ project.name }}
+
+		| {# Not allowed for the moment. Jobs are added via the Sequencer
+		a#task-add(href="javascript:job_create('{{ project.url }}');") + Create Shot
+		| #}
+
+	#job-list
+		.table
+			.table-head
+				.table-row
+					.table-cell.job-status
+					.table-cell.job-thumbnail
+						span.collapser.thumbnails(title="Collapse thumbnails") Thumbnail
+					.table-cell.job-name
+						span.collapser(title="Collapse name column") Name
+
+			.table-body.has-thumbnails
+				| {% for job in jobs %}
+				.table-row(
+					id="job-{{ job._id }}",
+					class="status-{{ job.properties.status }} }}")
+					.table-cell.job-status
+					.table-cell.job-thumbnail
+						a(
+							data-job-id="{{ job._id }}",
+							href="{{ url_for('flamenco.jobs.perproject.view_job', project_url=project.url, job_id=job._id) }}",
+							class="status-{{ job.properties.status }} job-link")
+							img(src="{{ job._thumbnail }}",
+								alt="Thumbnail",
+								style='width: 110px; height: {{ job._thumbnail_height }}')
+					.table-cell.job-name
+						a(
+							data-job-id="{{ job._id }}",
+							href="{{ url_for('flamenco.jobs.perproject.view_job', project_url=project.url, job_id=job._id) }}",
+							class="status-{{ job.properties.status }} job-link")
+							span(class="job-name-{{ job._id }}") {{ job.name }}
+				| {% endfor %}
+
+.col-splitter
+
+#col_right
+	.col_header
+		span.header_text
+		#status-bar
+	#item-details
+		.item-details-empty
+			| Select a Shot or Task
+
+| {% endblock %}
+| {% block footer_scripts %}
+script.
+	{% if open_task_id %}
+		$(function() { item_open('{{ open_task_id }}', 'task', false); });
+	{% endif %}
+	{% if open_job_id %}
+		$(function() { item_open('{{ open_job_id }}', 'job', false); });
+	{% endif %}
+
+	var same_cells;
+
+	/* Collapse columns by clicking on the title */
+	$('.table-head .table-cell span.collapser').on('click', function(e){
+		e.stopPropagation();
+
+		/* We need to find every cell matching the same classes */
+		same_cells = '.' + $(this).parent().attr('class').split(' ').join('.');
+		$(same_cells).hide();
+		/* Add the spacer which we later click to expand  */
+		$('<div class="table-cell-spacer ' + $(this).text() + '" title="Expand ' + $(this).text() + '"></div>').insertAfter(same_cells);
+	});
+
+	$('body').on('click', '.table-cell-spacer', function(){
+
+		/* We need to find every cell matching the same classes */
+		same_cells = '.' + $(this).prev().attr('class').split(' ').join('.');
+		$(same_cells).show();
+		$(same_cells).next().remove();
+	});
+
+	$('.table-body .table-cell').mouseenter(function(){
+		same_cells = '.' + $(this).attr('class').split(' ').join('.');
+		$('.table-head ' + same_cells).addClass('highlight');
+	}).mouseleave(function(){
+		same_cells = '.' + $(this).attr('class').split(' ').join('.');
+		$('.table-head ' + same_cells).removeClass('highlight');
+	});
+
+	$('.table-head .table-cell').mouseenter(function(){
+		same_cells = '.' + $(this).attr('class').split(' ').join('.');
+		$('.table-body ' + same_cells).addClass('highlight');
+	}).mouseleave(function(){
+		same_cells = '.' + $(this).attr('class').split(' ').join('.');
+		$('.table-body ' + same_cells).removeClass('highlight');
+	});
+
+script(src="{{ url_for('static_flamenco', filename='assets/js/vendor/clipboard.min.js')}}")
+script(src="{{ url_for('static_flamenco', filename='assets/js/vendor/jquery-resizable.min.js')}}")
+script.
+	$("#col_main").resizable({
+		handleSelector: ".col-splitter",
+		resizeHeight: false
+	});
+
+	$(window).on('load resize', function(){
+		var window_height = $(window).height() - 50; // header is 50px
+		$('#job-list').css({'height': window_height});
+		$('#item-details').css({'height': window_height});
+	});
+
+| {% endblock footer_scripts %}
