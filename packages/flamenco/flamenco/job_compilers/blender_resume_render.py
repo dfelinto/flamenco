@@ -14,10 +14,15 @@ def compile_blender_resume_render(job, create_task):
     except KeyError:
         render_output = render_output_from_filepath(job_settings['filepath'])
 
+    task_parents = {}
     cycles_num_chunks = job_settings['cycles_num_chunks']
     for cycles_chunk in range(1, cycles_num_chunks + 1):
 
         for i in range(0, len(parsed_frames), chunk_size):
+            # each chunk is parent of its own other chunk renders
+            if task_parents.get(i) == None:
+                task_parents[i] = []
+
             commands = []
 
             frames = frame_range_merge(parsed_frames[i:i + chunk_size])
@@ -86,7 +91,9 @@ def compile_blender_resume_render(job, create_task):
                         }
                     commands.append(cmd_delete)
 
-            create_task(job, commands, frames)
+            # assuming a single task per chunk render (for a cycles chunk)
+            task = create_task(job, commands, frames, parents=task_parents[i])
+            task_parents[i] = [task]
 
     # move the merged images to the correct location
     # only do this for the final step
@@ -106,7 +113,7 @@ def compile_blender_resume_render(job, create_task):
             commands.append(cmd_move)
 
         frames = frame_range_merge(parsed_frames[i:i + chunk_size])
-        create_task(job, commands, frames)
+        create_task(job, commands, frames, parents=task_parents[i])
 
 
 def filepath_from_frame(render_output, frame, file_format):
