@@ -87,9 +87,11 @@ def compile_blender_resume_render(job, create_task):
 
             create_task(job, commands, frames)
 
-        # move the merged images to the correct location
-        commands = []
-        for frame in parsed_frames:
+    # move the merged images to the correct location
+    # only do this for the final step
+    commands = []
+    for i in range(0, len(parsed_frames), chunk_size):
+        for frame in parsed_frames[i:i + chunk_size]:
             input_image_render = filepath_from_frame(render_output, frame, file_format)
             output_image_merge = merge_filepath_from_filepath(input_image_render)
 
