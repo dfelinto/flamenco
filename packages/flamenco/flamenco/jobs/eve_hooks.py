@@ -50,6 +50,7 @@ def create_task(job, commands, name, parents=None):
     r = post_internal('tasks', task)
     if r[3] != 201:
         return abort(r[3])
+    return r[0]['_id']
 
 
 def setup_app(app):
