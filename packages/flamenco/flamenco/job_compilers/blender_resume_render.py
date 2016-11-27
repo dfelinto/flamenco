@@ -10,12 +10,13 @@ def compile_blender_resume_render(job, create_task):
     parsed_frames = frame_range_parse(job_settings['frames'])
     chunk_size = job_settings['chunk_size']
     file_format = job_settings['format']
+    is_exr = file_format == 'EXR'
     file_path = job_settings['filepath']
     # temporary "job" folder where we render to - TODO needs implementation from @fsiddi
     # job_folder = job_settings['job_folder']
     job_folder = "/tmp/"
     # filepath that is used as blender --render-output
-    render_filepath = get_render_filepath(job_folder, file_format)
+    render_filepath = get_render_filepath(job_folder)
 
     # render_output is used for the final and partial files
     # only - we render in different folders
@@ -37,7 +38,7 @@ def compile_blender_resume_render(job, create_task):
                 'name': 'blender_render',
                 'settings': {
                     'filepath': file_path,
-                    'format': file_format,
+                    'format': 'EXR',
                     'frames': frames,
                     'cycles_num_chunks': cycles_num_chunks,
                     'cycles_chunk': cycles_chunk,
@@ -50,33 +51,53 @@ def compile_blender_resume_render(job, create_task):
             if KEEP_PARTIAL_IMAGES:
                 for frame in parsed_frames[i:i + chunk_size]:
                     published_file = get_render_filepath_from_frame(render_filepath, frame)
-                    debug_file = get_debug_filepath_from_frame_chunk(job_folder, file_format, frame, cycles_chunk)
+                    debug_file = get_debug_filepath_from_frame_chunk(job_folder, frame, cycles_chunk)
 
-                    cmd_copy = {
-                        'name': 'copy_file',
-                        'settings': {
-                            'input_file': published_file,
-                            'output_file': debug_file,
-                            },
-                        }
-                    commands.append(cmd_copy)
+                    if is_exr:
+                        cmd_copy = {
+                            'name': 'copy_file',
+                            'settings': {
+                                'input_file': published_file,
+                                'output_file': debug_file,
+                                },
+                            }
+                        commands.append(cmd_copy)
+                    else:
+                        cmd_convert = {
+                            'name': 'imagemagick_convert',
+                            'settings': {
+                                'input_image': published_file,
+                                'output_image': debug_file,
+                                }
+                            }
+                        commands.append(cmd_convert)
 
             # merge the files together
             if cycles_chunk == 1:
                 for frame in parsed_frames[i:i + chunk_size]:
                     rendered_file = get_render_filepath_from_frame(render_filepath, frame)
-                    partial_file = get_partial_filepath_from_frame(job_folder, file_format, frame)
+                    partial_file = get_partial_filepath_from_frame(job_folder, frame)
                     published_file = get_output_filepath_from_frame(render_output, file_format, frame)
 
                     # "publish" preview image
-                    cmd_copy = {
-                        'name': 'copy_file',
-                        'settings': {
-                            'input_file': rendered_file,
-                            'output_file': published_file,
-                            },
-                        }
-                    commands.append(cmd_copy)
+                    if is_exr:
+                        cmd_copy = {
+                            'name': 'copy_file',
+                            'settings': {
+                                'input_file': rendered_file,
+                                'output_file': published_file,
+                                },
+                            }
+                        commands.append(cmd_copy)
+                    else:
+                        cmd_convert = {
+                            'name': 'imagemagick_convert',
+                            'settings': {
+                                'input_image': rendered_file,
+                                'output_image': published_file,
+                                }
+                            }
+                        commands.append(cmd_convert)
 
                     # store accumulated result so far
                     cmd_move = {
@@ -91,16 +112,21 @@ def compile_blender_resume_render(job, create_task):
             else:
                 for frame in parsed_frames[i:i + chunk_size]:
                     rendered_file = get_render_filepath_from_frame(render_filepath, frame)
-                    partial_file = get_partial_filepath_from_frame(job_folder, file_format, frame)
+                    partial_file = get_partial_filepath_from_frame(job_folder, frame)
                     published_file = get_output_filepath_from_frame(render_output, file_format, frame)
+
+                    if is_exr:
+                        published_exr_file = published_file
+                    else:
+                        published_exr_file = get_output_filepath_from_frame(job_folder, 'EXR', frame)
 
                     # convert and automatically "publish" preview image
                     cmd_merge = {
-                        'name': 'imagemagick_convert',
+                        'name': 'imagemagick_merge',
                         'settings': {
                             'input_image_render': rendered_file,
                             'input_image_merge': partial_file,
-                            'output_image_merge': published_file,
+                            'output_image_merge': published_exr_file,
                             'cycles_chunk': cycles_chunk,
                             }
                         }
@@ -110,11 +136,21 @@ def compile_blender_resume_render(job, create_task):
                     cmd_copy = {
                         'name': 'copy_file',
                         'settings': {
-                            'input_file': published_file,
+                            'input_file': published_exr_file,
                             'output_file': partial_file,
                             },
                         }
                     commands.append(cmd_copy)
+
+                    if not is_exr:
+                        cmd_convert = {
+                            'name': 'imagemagick_convert',
+                            'settings': {
+                                'input_image': partial_file,
+                                'output_image': published_file,
+                                }
+                            }
+                        commands.append(cmd_convert)
 
             # assuming a single task per chunk render (for a cycles chunk)
             task = create_task(job, commands, frames, parents=task_parents[i])
@@ -145,9 +181,9 @@ def get_extension(file_format):
     return extension
 
 
-def get_render_filepath(basedir, file_format):
+def get_render_filepath(basedir):
     """Get filepath used to render from Blender"""
-    extension = get_extension(file_format)
+    extension = 'exr'
     return os.path.join(basedir, "######.{0}".format(extension))
 
 
@@ -204,20 +240,20 @@ def get_output_filepath_from_frame(render_output, file_format, frame):
     return get_render_filepath_from_frame(filepath, frame)
 
 
-def get_debug_filepath_from_frame_chunk(basedir, file_format, frame, cycles_chunk):
+def get_debug_filepath_from_frame_chunk(basedir, frame, cycles_chunk):
     """Get filepath for individual rendered images"""
     basename = "######-{0:02d}".format(cycles_chunk)
 
-    extension = get_extension(file_format)
+    extension = get_extension('EXR')
     basename = "{0}.{1}".format(basename, extension)
 
     filepath = os.path.join(basedir, basename)
     return get_render_filepath_from_frame(filepath, frame)
 
 
-def get_partial_filepath_from_frame(basedir, file_format, frame):
+def get_partial_filepath_from_frame(basedir, frame):
     """Get filepath with accumulated render results"""
-    basename = get_render_filepath(basedir, file_format)
+    basename = get_render_filepath(basedir)
     basename = get_render_filepath_from_frame(basename, frame)
     filepath = "{0:}_partial.{1}".format(basename[:-4], basename[-3:])
     return os.path.join(basedir, filepath)

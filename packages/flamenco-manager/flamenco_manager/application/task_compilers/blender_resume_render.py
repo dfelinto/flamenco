@@ -62,6 +62,34 @@ class TaskCompiler:
 
             return cmd
 
+        def _compile_image_convert(cmd_settings):
+            """Build the imagemagick convert command. Strings that are checked for remapping are:
+            - convert_cmd
+            - input_image
+            - output_imagee
+            """
+            # Check if a command has been defined, or use the default definition.
+            try:
+                convert_cmd = cmd_settings['convert_cmd']
+            except KeyError:
+                convert_cmd = '{imagemagick_convert}'
+
+            input_image = cmd_settings['input_image']
+            output_image = cmd_settings['output_image']
+
+            # Do path remapping
+            convert_cmd = convert_cmd.format(**paths)
+            input_image = input_image.format(**paths)
+            output_image = output_image.format(**paths)
+
+            cmd = [
+                convert_cmd,
+                input_image,
+                output_image,
+                ]
+
+            return cmd
+
         def _compile_image_merge(cmd_settings):
             """Build the imagemagick merge command. Strings that are checked for remapping are:
             - convert_cmd
@@ -191,10 +219,11 @@ class TaskCompiler:
 
         command_map = {
             'blender_render': _compile_blender_render,
-            'imagemagick_convert': _compile_image_merge,
-            'move_file': _compile_move_file,
             'copy_file': _compile_copy_file,
             'delete_file': _compile_delete_file,
+            'imagemagick_convert': _compile_image_convert,
+            'imagemagick_merge': _compile_image_merge,
+            'move_file': _compile_move_file,
         }
 
         commands = []
