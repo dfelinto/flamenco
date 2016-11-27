@@ -175,7 +175,11 @@ def strip_extension(basename):
 def get_output_filepath_from_frame(render_output, file_format, frame):
     """Get filepath used to output/publish partial or final frames"""
     basedir, basename = os.path.split(render_output)
-    basename = strip_extension(basename)
+
+    if not basename:
+        basename = "######"
+    else:
+        basename = strip_extension(basename)
 
     extension = get_extension(file_format)
     basename = "{0}.{1}".format(basename, extension)
