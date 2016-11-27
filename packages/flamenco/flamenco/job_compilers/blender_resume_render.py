@@ -2,6 +2,7 @@ from flamenco.utils import frame_range_parse
 from flamenco.utils import frame_range_merge
 import os
 
+KEEP_PARTIAL_IMAGES = True
 
 def compile_blender_resume_render(job, create_task):
     """The Blender render job with resume options."""
@@ -44,6 +45,21 @@ def compile_blender_resume_render(job, create_task):
                 }
             }
             commands.append(cmd_render)
+
+            # debug option
+            if KEEP_PARTIAL_IMAGES:
+                for frame in parsed_frames[i:i + chunk_size]:
+                    published_file = get_output_filepath_from_frame(render_output, file_format, frame)
+                    debug_file = get_debug_filepath_from_frame_chunk(job_folder, file_format, frame, cycles_chunk)
+
+                    cmd_copy = {
+                        'name': 'copy_file',
+                        'settings': {
+                            'input_file': published_file,
+                            'output_file': debug_file,
+                            },
+                        }
+                    commands.append(cmd_copy)
 
             # merge the files together
             if cycles_chunk == 1:
@@ -180,6 +196,17 @@ def get_output_filepath_from_frame(render_output, file_format, frame):
         basename = "######"
     else:
         basename = strip_extension(basename)
+
+    extension = get_extension(file_format)
+    basename = "{0}.{1}".format(basename, extension)
+
+    filepath = os.path.join(basedir, basename)
+    return get_render_filepath_from_frame(filepath, frame)
+
+
+def get_debug_filepath_from_frame_chunk(basedir, file_format, frame, cycles_chunk):
+    """Get filepath for individual rendered images"""
+    basename = "######-{0:02d}".format(cycles_chunk)
 
     extension = get_extension(file_format)
     basename = "{0}.{1}".format(basename, extension)
