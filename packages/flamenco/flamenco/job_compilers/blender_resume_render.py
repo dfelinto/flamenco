@@ -1,5 +1,6 @@
 from flamenco.utils import frame_range_parse
 from flamenco.utils import frame_range_merge
+import os
 
 
 def compile_blender_resume_render(job, create_task):
@@ -8,11 +9,16 @@ def compile_blender_resume_render(job, create_task):
     parsed_frames = frame_range_parse(job_settings['frames'])
     chunk_size = job_settings['chunk_size']
     file_format = job_settings['format']
+    file_path = job_settings['filepath']
+    # temporary "job" folder where we render to - TODO needs implementation from @fsiddi
+    # job_folder = job_settings['job_folder']
+    job_folder = "/tmp/"
+    # filepath that is used as blender --render-output
+    render_filepath = get_render_filepath(job_folder, file_format)
 
-    try:
-        render_output = job_settings['render_output']
-    except KeyError:
-        render_output = render_output_from_filepath(job_settings['filepath'])
+    # render_output is used for the final and partial files
+    # only - we render in different folders
+    render_output = job_settings['render_output']
 
     task_parents = {}
     cycles_num_chunks = job_settings['cycles_num_chunks']
@@ -29,112 +35,159 @@ def compile_blender_resume_render(job, create_task):
             cmd_render = {
                 'name': 'blender_render',
                 'settings': {
-                    'filepath': job_settings['filepath'],
-                    'format': job_settings['format'],
+                    'filepath': file_path,
+                    'format': file_format,
                     'frames': frames,
                     'cycles_num_chunks': cycles_num_chunks,
                     'cycles_chunk': cycles_chunk,
+                    'render_output': render_filepath,
                 }
             }
-
-            # we force the render_output to be specified at all times
-            cmd_render['settings']['render_output'] = render_output
-
             commands.append(cmd_render)
 
             # merge the files together
             if cycles_chunk == 1:
                 for frame in parsed_frames[i:i + chunk_size]:
-                    input_image_render = filepath_from_frame(render_output, frame, file_format)
-                    output_image_merge = merge_filepath_from_filepath(input_image_render)
+                    rendered_file = get_render_filepath_from_frame(render_filepath, frame)
+                    partial_file = get_partial_filepath_from_frame(job_folder, file_format, frame)
+                    published_file = get_output_filepath_from_frame(render_output, file_format, frame)
 
+                    # "publish" preview image
+                    cmd_copy = {
+                        'name': 'copy_file',
+                        'settings': {
+                            'input_file': rendered_file,
+                            'output_file': published_file,
+                            },
+                        }
+                    commands.append(cmd_copy)
+
+                    # store accumulated result so far
                     cmd_move = {
                         'name': 'move_file',
                         'settings': {
-                            'input_file': input_image_render,
-                            'output_file': output_image_merge,
+                            'input_file': rendered_file,
+                            'output_file': partial_file,
                             },
                         }
                     commands.append(cmd_move)
 
             else:
                 for frame in parsed_frames[i:i + chunk_size]:
-                    input_image_render = filepath_from_frame(render_output, frame, file_format)
-                    output_image_merge = merge_filepath_from_filepath(input_image_render)
-                    input_image_merge = merge_filepath_from_filepath(input_image_render, "_merge_temp")
+                    rendered_file = get_render_filepath_from_frame(render_filepath, frame)
+                    partial_file = get_partial_filepath_from_frame(job_folder, file_format, frame)
+                    published_file = get_output_filepath_from_frame(render_output, file_format, frame)
 
-                    cmd_move = {
-                        'name': 'move_file',
-                        'settings': {
-                            'input_file': output_image_merge,
-                            'output_file': input_image_merge,
-                            },
-                        }
-                    commands.append(cmd_move)
-
+                    # convert and automatically "publish" preview image
                     cmd_merge = {
                         'name': 'imagemagick_convert',
                         'settings': {
-                            'input_image_render': input_image_render,
-                            'input_image_merge': input_image_merge,
-                            'output_image_merge': output_image_merge,
+                            'input_image_render': rendered_file,
+                            'input_image_merge': partial_file,
+                            'output_image_merge': published_file,
                             'cycles_chunk': cycles_chunk,
                             }
                         }
                     commands.append(cmd_merge)
 
-                    cmd_delete = {
-                        'name': 'delete_file',
+                    # keep local partial copy of published image
+                    cmd_copy = {
+                        'name': 'copy_file',
                         'settings': {
-                            'filepath': input_image_merge,
+                            'input_file': published_file,
+                            'output_file': partial_file,
                             },
                         }
-                    commands.append(cmd_delete)
+                    commands.append(cmd_copy)
 
             # assuming a single task per chunk render (for a cycles chunk)
             task = create_task(job, commands, frames, parents=task_parents[i])
             task_parents[i] = [task]
 
-    # move the merged images to the correct location
-    # only do this for the final step
-    commands = []
-    for i in range(0, len(parsed_frames), chunk_size):
-        for frame in parsed_frames[i:i + chunk_size]:
-            input_image_render = filepath_from_frame(render_output, frame, file_format)
-            output_image_merge = merge_filepath_from_filepath(input_image_render)
 
-            cmd_move = {
-                'name': 'move_file',
-                        'settings': {
-                            'input_file': output_image_merge,
-                            'output_file': input_image_render,
-                            },
-                        }
-            commands.append(cmd_move)
-
-        frames = frame_range_merge(parsed_frames[i:i + chunk_size])
-        create_task(job, commands, frames, parents=task_parents[i])
-
-
-def filepath_from_frame(render_output, frame, file_format):
-    import os
-    # TODO do it for real, with smart path handling or call blender and get it from it
+def get_extension(file_format):
+    """Get the file extension based on the file format
+    """
     formats = {
+            'TGA': 'tga',
+            'RAWTGA': 'tga',
             'JPEG': 'jpg',
+            'IRIS': 'rgb',
+            'IRIZ': 'rgb',
             'PNG': 'png',
+            'BMP': 'bmp',
+            'HDR': 'hdr',
+            'TIFF': 'tif',
+            'EXR': 'exr',
+            'MULTILAYER': 'exr',
+            'CINEON': 'cin',
+            'DPX': 'dpx',
+            'JP2': 'jp2',
             }
 
-    extension = formats.get(file_format, "jpg")
-    # TODO - assert if extension doesn't match?
-    return os.path.join(render_output, "{0:04d}.{1}".format(frame, extension))
+    extension = formats.get(file_format, "tga")
+    return extension
 
 
-def render_output_from_filepath(filepath):
-    # TODO use BAM, or blender output
-    return "/tmp/"
+def get_render_filepath(basedir, file_format):
+    """Get filepath used to render from Blender"""
+    extension = get_extension(file_format)
+    return os.path.join(basedir, "######.{0}".format(extension))
 
 
-def merge_filepath_from_filepath(filepath, merge="_merge"):
-    """Add _merge before file suffix"""
-    return "{0}{1}.{2}".format(filepath[:-4], merge, filepath[-3:])
+def get_render_filepath_from_frame(render_filepath, frame):
+    """Get filepath of rendered frame from Blender"""
+    basedir, basename = os.path.split(render_filepath)
+
+    start = basename.find("#")
+    end = basename.rfind("#")
+
+    if start == -1:
+        start = 0
+        end = 1
+
+    string = "{{0}}{{1:0{digits}d}}{{2}}".format(digits=(end - start + 1))
+    filepath = string.format(basename[:start], frame, basename[end + 1:])
+
+    return os.path.join(basedir, filepath)
+
+
+def strip_extension(basename):
+    """Return stripped string
+    remove extension of file (up to 4 letters)
+    foobar.abcde > foobar.abcde
+    foobar.jpeg > foobar
+    foobar.jpg > foobar
+    foobar.jp > foobar
+    foobar.j > foobar
+    foobar. > foobar
+    foobar > foobar
+    """
+    len_basename = len(basename)
+    period = basename.rfind('.')
+
+    if len_basename - period <= 5:
+        return basename[:-(len_basename - period)]
+    else:
+        return basename
+
+
+def get_output_filepath_from_frame(render_output, file_format, frame):
+    """Get filepath used to output/publish partial or final frames"""
+    basedir, basename = os.path.split(render_output)
+    basename = strip_extension(basename)
+
+    extension = get_extension(file_format)
+    basename = "{0}.{1}".format(basename, extension)
+
+    filepath = os.path.join(basedir, basename)
+    return get_render_filepath_from_frame(filepath, frame)
+
+
+def get_partial_filepath_from_frame(basedir, file_format, frame):
+    """Get filepath with accumulated render results"""
+    basename = get_render_filepath(basedir, file_format)
+    basename = get_render_filepath_from_frame(basename, frame)
+    filepath = "{0:}_partial.{1}".format(basename[:-4], basename[-3:])
+    return os.path.join(basedir, filepath)
 

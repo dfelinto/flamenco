@@ -72,6 +72,7 @@ def setup_db():
                 'blender_render': get_blender_render(),
                 'imagemagick_convert': get_imagemagick_convert(),
                 'move_file': get_move_file(),
+                'copy_file': get_copy_file(),
                 'delete_file': get_delete_file(),
                 }
         render_resume_config = JobType(

@@ -193,6 +193,7 @@ class TaskCompiler:
             'blender_render': _compile_blender_render,
             'imagemagick_convert': _compile_image_merge,
             'move_file': _compile_move_file,
+            'copy_file': _compile_copy_file,
             'delete_file': _compile_delete_file,
         }
 
