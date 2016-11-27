@@ -135,6 +135,35 @@ class TaskCompiler:
 
             return cmd
 
+        def _compile_copy_file(cmd_settings):
+            """Copy a file. Strings that are checked for remapping are:
+            - input_file
+            - output_file
+            """
+            # Parse the file patha. These property are required, so we crash if not set.
+            input_file = cmd_settings['input_file']
+            output_file = cmd_settings['output_file']
+            # Do path remapping
+            input_file = input_file.format(**paths)
+            output_file = output_file.format(**paths)
+
+            # Check if a command has been defined, or use the default definition.
+            try:
+                copy_cmd = cmd_settings['copy_cmd']
+            except KeyError:
+                copy_cmd = '{copy_file}'
+
+            # Do path remapping
+            copy_cmd = copy_cmd.format(**paths)
+
+            cmd = [
+                copy_cmd,
+                input_file,
+                output_file,
+                ]
+
+            return cmd
+
         def _compile_delete_file(cmd_settings):
             """Delete a file. Strings that are checked for remapping are:
             - filepath

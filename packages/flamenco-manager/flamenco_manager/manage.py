@@ -173,6 +173,16 @@ def get_move_file():
     return configuration
 
 
+def get_copy_file():
+    """"""
+    configuration = {
+            'Linux': 'cp',
+            'Darwin': 'cp',
+            'Windows': 'copy'
+        }
+    return configuration
+
+
 def get_delete_file():
     """"""
     configuration = {
