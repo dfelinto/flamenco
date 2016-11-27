@@ -49,7 +49,7 @@ def compile_blender_resume_render(job, create_task):
             # debug option
             if KEEP_PARTIAL_IMAGES:
                 for frame in parsed_frames[i:i + chunk_size]:
-                    published_file = get_output_filepath_from_frame(render_output, file_format, frame)
+                    published_file = get_render_filepath_from_frame(render_filepath, frame)
                     debug_file = get_debug_filepath_from_frame_chunk(job_folder, file_format, frame, cycles_chunk)
 
                     cmd_copy = {
