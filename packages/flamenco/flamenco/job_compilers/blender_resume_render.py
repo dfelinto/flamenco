@@ -4,6 +4,11 @@ import os
 
 KEEP_PARTIAL_IMAGES = True
 
+def get_working_folder(filepath):
+    basedir = os.path.basedir(filepath)
+    return os.path.abspath(os.path.join(dirname, os.pardir, 'processing'))
+
+
 def compile_blender_resume_render(job, create_task):
     """The Blender render job with resume options."""
     job_settings = job['settings']
@@ -12,9 +17,8 @@ def compile_blender_resume_render(job, create_task):
     file_format = job_settings['format']
     is_exr = file_format == 'EXR'
     file_path = job_settings['filepath']
-    # temporary "job" folder where we render to - TODO needs implementation from @fsiddi
-    # job_folder = job_settings['job_folder']
-    job_folder = "/tmp/"
+    job_folder = get_working_folder(file_path)
+
     # filepath that is used as blender --render-output
     render_filepath = get_render_filepath(job_folder)
 
@@ -22,7 +26,17 @@ def compile_blender_resume_render(job, create_task):
     # only - we render in different folders
     render_output = job_settings['render_output']
 
-    task_parents = {}
+    # the work folder is where everything happens
+    cmd_mkdir = [{
+        'name': 'create_directory',
+        'settings': {
+            'dirpath': job_folder,
+            },
+        }]
+
+    task = create_task(job, cmd_mkdir, 'create')
+    task_parents = {i:task for i in range(0, len(parsed_frames), chunk_size)}
+
     cycles_num_chunks = job_settings['cycles_num_chunks']
     for cycles_chunk in range(1, cycles_num_chunks + 1):
 

@@ -74,6 +74,7 @@ def setup_db():
                 'move_file': get_move_file(),
                 'copy_file': get_copy_file(),
                 'delete_file': get_delete_file(),
+                'create_directory': get_create_directory(),
                 }
         render_resume_config = JobType(
                 name='blender_resume_render',
@@ -190,6 +191,16 @@ def get_delete_file():
             'Linux': 'rm',
             'Darwin': 'rm',
             'Windows': 'del'
+        }
+    return configuration
+
+
+def get_create_directory():
+    """"""
+    configuration = {
+            'Linux': 'mkdir',
+            'Darwin': 'mkdir',
+            'Windows': 'mkdir'
         }
     return configuration
 

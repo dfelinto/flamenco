@@ -33,6 +33,7 @@ class TaskCompiler:
 
             # render_output is always required for render_resume
             render_output = cmd_settings['render_output']
+
             # Do path remapping
             render_output = render_output.format(**paths)
 
@@ -217,6 +218,31 @@ class TaskCompiler:
 
             return cmd
 
+        def _compile_create_directory(cmd_settings):
+            """Create a directory. Strings that are checked for remapping are:
+            - dirpath
+            """
+            # Parse the dir path. These property are required, so we crash if not set.
+            dirpath = cmd_settings['dirpath']
+            # Do path remapping
+            dirpath = dirpath.format(**paths)
+
+            # Check if a command has been defined, or use the default definition.
+            try:
+                mkdir_cmd = cmd_settings['mkdir_cmd']
+            except KeyError:
+                mkdir_cmd = '{create_directory}'
+
+            # Do path remapping
+            mkdir_cmd = mkdir_cmd.format(**paths)
+
+            cmd = [
+                mkdir_cmd,
+                dirpath,
+                ]
+
+            return cmd
+
         command_map = {
             'blender_render': _compile_blender_render,
             'copy_file': _compile_copy_file,
@@ -224,6 +250,7 @@ class TaskCompiler:
             'imagemagick_convert': _compile_image_convert,
             'imagemagick_merge': _compile_image_merge,
             'move_file': _compile_move_file,
+            'create_directory': _compile_create_directory,
         }
 
         commands = []
