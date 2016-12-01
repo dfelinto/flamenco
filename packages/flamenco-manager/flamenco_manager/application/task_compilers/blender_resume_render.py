@@ -98,6 +98,20 @@ class TaskCompiler:
             - input_image_merge
             - output_image_merge
             """
+
+            def get_samples(num_samples, num_resumable_chunks, current_resumable_chunk):
+                import math
+                num_samples_per_chunk = int(math.ceil(float(num_samples) / num_resumable_chunks))
+
+                range_start_sample = num_samples_per_chunk * (current_resumable_chunk - 1)
+                range_num_samples = num_samples_per_chunk
+
+                if range_start_sample + range_num_samples > num_samples:
+                    range_num_samples = num_samples - range_num_samples
+
+                return range_num_samples
+
+
             # Check if a command has been defined, or use the default definition.
             try:
                 convert_cmd = cmd_settings['convert_cmd']
@@ -115,21 +129,28 @@ class TaskCompiler:
             output_image_merge = output_image_merge.format(**paths)
 
             # calculate the contributions of the individual images
-            cycles_chunk = cmd_settings['cycles_chunk']
-            factor = 1.0 / cycles_chunk
+            num_samples = cmd_settings['num_samples']
+            num_resumable_chunks = cmd_settings['num_resumable_chunks']
+            current_resumable_chunk = cmd_settings['current_resumable_chunk']
+
+            sofar_samples = sum([get_samples(num_samples, num_resumable_chunks, i) for i in range(1, current_resumable_chunk)])
+            current_samples = get_samples(num_samples, num_resumable_chunks, current_resumable_chunk)
 
             cmd = [
                 convert_cmd,
                 input_image_render,
                 '-evaluate',
                 'Multiply',
-                "{0:4.2f}".format(factor),
+                "{0}".format(current_samples),
                 input_image_merge,
                 '-evaluate',
                 'Multiply',
-                "{0:4.2f}".format(1.0 - factor),
+                "{0}".format(sofar_samples),
                 '-evaluate-sequence',
                 'add',
+                '-evaluate',
+                'Divide',
+                "{0}".format(current_samples + sofar_samples),
                 output_image_merge,
                 ]
 

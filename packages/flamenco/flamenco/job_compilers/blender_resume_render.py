@@ -5,7 +5,7 @@ import os
 KEEP_PARTIAL_IMAGES = True
 
 def get_working_folder(filepath):
-    basedir = os.path.basedir(filepath)
+    dirname = os.path.dirname(filepath)
     return os.path.abspath(os.path.join(dirname, os.pardir, 'processing'))
 
 
@@ -16,6 +16,7 @@ def compile_blender_resume_render(job, create_task):
     chunk_size = job_settings['chunk_size']
     file_format = job_settings['format']
     is_exr = file_format == 'EXR'
+    samples = int(job_settings['samples'])
     file_path = job_settings['filepath']
     job_folder = get_working_folder(file_path)
 
@@ -35,7 +36,7 @@ def compile_blender_resume_render(job, create_task):
         }]
 
     task = create_task(job, cmd_mkdir, 'create')
-    task_parents = {i:task for i in range(0, len(parsed_frames), chunk_size)}
+    task_parents = {i:[task] for i in range(0, len(parsed_frames), chunk_size)}
 
     cycles_num_chunks = job_settings['cycles_num_chunks']
     for cycles_chunk in range(1, cycles_num_chunks + 1):
@@ -141,7 +142,9 @@ def compile_blender_resume_render(job, create_task):
                             'input_image_render': rendered_file,
                             'input_image_merge': partial_file,
                             'output_image_merge': published_exr_file,
-                            'cycles_chunk': cycles_chunk,
+                            'num_samples': samples,
+                            'num_resumable_chunks': cycles_num_chunks,
+                            'current_resumable_chunk': cycles_chunk,
                             }
                         }
                     commands.append(cmd_merge)
