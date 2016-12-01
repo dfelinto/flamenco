@@ -13,7 +13,10 @@ managers_schema = {
         'type': 'string',
         'required': True
     }
-    # TODO: add token so that we can authenticate the manager itself
+    # TODO: add user so that we can authenticate the manager itself. The user
+    # will be of type 'service', 'flamenco_manager'. The user will be part of
+    # a group together with the users of the project it's used it. A sparate
+    # permission system will manage access to GET, PUT, DELETE or PATCH
 }
 
 jobs_schema = {
@@ -28,7 +31,7 @@ jobs_schema = {
         'required': True,
     },
     # Remarks about the settings, the author or the system
-    'notes': {
+    'description': {
         'type': 'string',
     },
     'project': {
@@ -93,7 +96,7 @@ jobs_schema = {
         'type': 'dict',
         # TODO: introduce dynamic validator, based on job_type/task_type
         'allow_unknown': True,
-    }
+    },
 }
 
 tasks_schema = {
