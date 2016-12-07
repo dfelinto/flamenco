@@ -37,12 +37,13 @@ def create_tasks(job):
 def create_task(job, commands, name, parents=None):
     task = {
         'job': job['_id'],
+        'manager': job['manager'],
+        'user': job['user'],
         'name': name,
+        'status': 'queued',
         'job_type': job['job_type'],
         'commands': commands,
-        'status': 'queued',
         'priority': job['priority'],
-        'manager': job['manager'],
     }
     # Insertion of None parents is not supported
     if parents:
@@ -63,7 +64,4 @@ def before_returning_job_permissions(response):
 def setup_app(app):
     app.on_inserted_jobs = after_inserting_jobs
     app.on_fetched_item_jobs += before_returning_job_permissions
-    # app.on_fetched_resource_projects += hooks.before_returning_project_resource_permissions
-    # app.on_fetched_item_projects += hooks.project_node_type_has_method
-    # app.on_fetched_resource_projects += hooks.projects_node_type_has_method
 

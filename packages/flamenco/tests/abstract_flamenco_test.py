@@ -1,7 +1,5 @@
 from pillar.tests import PillarTestServer, AbstractPillarTest
 
-MOCK_SVN_URL = 'svn://biserver/mocked'
-
 
 class FlamencoTestServer(PillarTestServer):
     def __init__(self, *args, **kwargs):
@@ -15,10 +13,12 @@ class AbstractFlamencoTest(AbstractPillarTest):
     pillar_server_class = FlamencoTestServer
 
     def tearDown(self):
-
         self.unload_modules('flamenco')
-
         AbstractPillarTest.tearDown(self)
+
+    @property
+    def flamenco(self):
+        return self.app.pillar_extensions['flamenco']
 
     def ensure_project_exists(self, project_overrides=None):
         from flamenco.setup import setup_for_flamenco
@@ -32,8 +32,7 @@ class AbstractFlamencoTest(AbstractPillarTest):
             self, project_overrides)
 
         with self.app.test_request_context():
-            flamenco_project = setup_for_flamenco(project['url'],
-                                                replace=True,
-                                                svn_url=MOCK_SVN_URL)
+            flamenco_project = setup_for_flamenco(
+                project['url'], replace=True)
 
         return proj_id, flamenco_project
